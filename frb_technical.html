@@ -3204,9 +3204,13 @@ Under 12%
 <div id="final-results" class="section level2">
 <h2>3 Final Results</h2>
 <p>The following is the final results. For reference, the code for this
-is saved in the following <a href="https://www.federalreserve.gov/publications/files/2023-june-supervisory-stress-test-methodology.pdf">repository</a>.</p>
+is saved in the following <a href="https://github.com/chye17/frb_technical">github
+repository</a>.</p>
 <pre class="r"><code>## Listing the number of subsegments of interest
-subseg_list = c(&#39;credit_card_type&#39;, &#39;current_credit_limit&#39;, &#39;days_past_due&#39;, &#39;product_type&#39;, &#39;month_end_account_status&#39;, &#39;account_origination_year&#39;, &#39;month_end_close_status&#39;, &#39;cycle_ending_balance&#39; , &#39;income_at_origination&#39;, &#39;original_credit_limit&#39;, &#39;interest_rate_at_cycle_end&#39;)
+subseg_list = c(&#39;credit_card_type&#39;, &#39;current_credit_limit&#39;, &#39;days_past_due&#39;, 
+                &#39;product_type&#39;, &#39;month_end_account_status&#39;, &#39;account_origination_year&#39;,
+                &#39;month_end_close_status&#39;, &#39;cycle_ending_balance&#39;, &#39;income_at_origination&#39;,
+                &#39;original_credit_limit&#39;, &#39;interest_rate_at_cycle_end&#39;)
 ## Creating main table to prep for concatenation of results
 data_concat = data.table::data.table(`Variables` = as.character(NA), `Lower-risk` = as.numeric(NA), `Typical` = as.numeric(NA), `Higher-risk` = as.numeric(NA))
 ## Cycling through list of subsegments of interest and concatenating it to main table

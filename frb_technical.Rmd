@@ -191,11 +191,14 @@ table_format(interest_rate_at_cycle_end)
 
 ## 3 Final Results
 
-The following is the final results. For reference, the code for this is saved in the following [repository](https://www.federalreserve.gov/publications/files/2023-june-supervisory-stress-test-methodology.pdf).
+The following is the final results. For reference, the code for this is saved in the following [github repository](https://github.com/chye17/frb_technical).
 
 ```{r overall}
 ## Listing the number of subsegments of interest
-subseg_list = c('credit_card_type', 'current_credit_limit', 'days_past_due', 'product_type', 'month_end_account_status', 'account_origination_year', 'month_end_close_status', 'cycle_ending_balance' , 'income_at_origination', 'original_credit_limit', 'interest_rate_at_cycle_end')
+subseg_list = c('credit_card_type', 'current_credit_limit', 'days_past_due', 
+                'product_type', 'month_end_account_status', 'account_origination_year',
+                'month_end_close_status', 'cycle_ending_balance', 'income_at_origination',
+                'original_credit_limit', 'interest_rate_at_cycle_end')
 ## Creating main table to prep for concatenation of results
 data_concat = data.table::data.table(`Variables` = as.character(NA), `Lower-risk` = as.numeric(NA), `Typical` = as.numeric(NA), `Higher-risk` = as.numeric(NA))
 ## Cycling through list of subsegments of interest and concatenating it to main table
