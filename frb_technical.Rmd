@@ -1,0 +1,218 @@
+---
+title: "FRB Technical Assessment"
+subtitle: "Reproduction of Table 37"
+date: "`r Sys.Date()`"
+output: 
+## Deprecate pdf output as formatting is just a tiny bit off. 
+  # pdf_document: 
+  #   toc: no
+  #   toc_depth: 4
+  html_document:
+        toc: yes
+        toc_depth: 4
+        toc_float:
+          toc_collapsed: true
+---
+```{r setup, echo=FALSE, message=FALSE}
+## Checking for required packages and installing them if they are not installed.
+required_packages = c('rmarkdown', 'data.table', 'dplyr', 'stringi', 'stringr', 
+                      'kableExtra', 'tidyr')
+install_required_packages = required_packages[!(required_packages %in% 
+                                                  installed.packages()[,'Package'])]
+if(length(install_required_packages)){
+  cat(paste0('Installing: ', install_required_packages,' \n'))
+  install.packages(install_required_packages, 
+                   repos = "http://cran.us.r-project.org")
+}
+## Loading required packages.
+options(warn = -1)
+invisible(lapply(required_packages, require, character.only = TRUE))
+options(warn = 0)
+```
+
+## 1 Introduction
+
+The purpose of this document is to reproduce results from table 37 of the [2023 Supervisory Stress Test Methodology Disclosure](https://www.federalreserve.gov/publications/files/2023-june-supervisory-stress-test-methodology.pdf). The constituent computation is presented in Section 2 and the final result is presented in Section 3. Before presenting the constituent computation, the following are the additional data processing presented here to aid readers.
+
+```{r additional_computation, message=FALSE}
+## Loading data from csv files.
+cards_low_risk = 
+  read.csv('https://www.federalreserve.gov/supervisionreg/files/cards-low-risk-2023.csv')
+cards_typical_risk = 
+  read.csv('https://www.federalreserve.gov/supervisionreg/files/cards-typical-risk-2023.csv')
+cards_high_risk = 
+  read.csv('https://www.federalreserve.gov/supervisionreg/files/cards-high-risk-2023.csv')
+
+## Additional processing
+cards_low_risk = data.table::as.data.table(cards_low_risk) %>% mutate(portfolio = 'Lower-risk')
+cards_typical_risk = data.table::as.data.table(cards_typical_risk) %>% mutate(portfolio = 'Typical')
+cards_high_risk = data.table::as.data.table(cards_high_risk) %>% mutate(portfolio = 'Higher-risk')
+
+## Normalizing balance to simplify computation
+cards_low_risk = cards_low_risk %>% 
+  mutate(cycleendingbalance_prop = cycleendingbalance/sum(cycleendingbalance))
+cards_typical_risk = cards_typical_risk %>% 
+  mutate(cycleendingbalance_prop = cycleendingbalance/sum(cycleendingbalance))
+cards_high_risk = cards_high_risk %>% 
+  mutate(cycleendingbalance_prop = cycleendingbalance/sum(cycleendingbalance))
+
+## Concatenating the tables to simplify code
+cards_overall = data.table::funion(cards_low_risk, cards_typical_risk)
+cards_overall = data.table::funion(cards_overall, cards_high_risk)
+
+## Additional data processing
+cards_overall = cards_overall %>% 
+  mutate(current_credit_limit = case_when(currentcreditlimit <= 1500 ~ '$1,500 and less',
+                                       currentcreditlimit > 1500 & 
+                                         currentcreditlimit <= 7500 ~ '$1,501–$7,500',
+                                       currentcreditlimit > 7500 ~ 'Over $7,500'),
+         credit_card_type = case_when(creditcardtype == 1 ~ 'General purpose',
+                                      creditcardtype == 2 ~ 'Private label'),
+         days_past_due = case_when(dayspastdue <= 30 ~ 'Current',
+                                   dayspastdue > 30 ~ '30+ Days past due'),
+         product_type = case_when(producttype == 1 ~ 'Co-brand',
+                                  producttype == 2 ~ 'Other'),
+         month_end_account_status = case_when(monthendclosedrevokedflag == 0 ~ 'Open and active',
+                                      monthendclosedrevokedflag == 1 ~ 'Other'),
+         month_end_close_status = case_when(monthendclosedrevokedflag == 0 ~ 'Not closed',
+                                      monthendclosedrevokedflag == 1 ~ 'Closed'),
+         account_origination_year = case_when(accountoriginationyear <= 2017 ~ '2017 and prior',
+                                              .default = as.character(accountoriginationyear)),
+         cycle_ending_balance  = case_when(cycleendingbalance < 1000 ~ 'Under $1,000',
+                                               cycleendingbalance >= 1000 &
+                                                 cycleendingbalance <= 1999 ~ '$1,000–$1,999',
+                                               cycleendingbalance >= 2000 &
+                                                 cycleendingbalance <= 2999 ~ '$2,000–$2,999',
+                                               cycleendingbalance >= 3000 &
+                                                 cycleendingbalance <= 4999 ~ '$3,000–$4,999',
+                                               cycleendingbalance >= 5000 &
+                                                 cycleendingbalance <= 9999 ~ '$5,000–$9,999',
+                                               cycleendingbalance >= 10000 ~ '$10,000 and over'),
+         income_at_origination = case_when(borrowerincome <= 50000 ~ '$50,000 and less',
+                                           borrowerincome > 50000 &
+                                             borrowerincome <= 100000 ~ '$50,001–$100,000',
+                                           borrowerincome > 100000 ~ 'Over $100,000'
+                                           ),
+         original_credit_limit = case_when(originalcreditlimit <= 1500 ~ '$1,500 and less',
+                                           originalcreditlimit > 1500 & 
+                                             originalcreditlimit <= 7500 ~ '$1,501–$7,500',
+                                           originalcreditlimit > 7500 ~ 'Over $7,500'),
+         interest_rate_at_cycle_end = case_when(cycleendingretailapr < 12 ~ 'Under 12%',
+                                                cycleendingretailapr >= 12 &
+                                                  cycleendingretailapr <= 14.99 ~ '12%–14.99%',
+                                                cycleendingretailapr >= 15 &
+                                                  cycleendingretailapr <= 19.99 ~ '15%–19.99%',
+                                                cycleendingretailapr >= 20 &
+                                                  cycleendingretailapr <= 23.99 ~ '20%–23.99%',
+                                                cycleendingretailapr >= 24 ~ '24% and over')
+         )
+
+## Defining commonly used functions
+subsegment_percent = function(subsegment){
+  return(
+    cards_overall %>%
+  group_by(.dots = subsegment, portfolio) %>% 
+  summarize( percentage = round(sum(cycleendingbalance_prop)*100, 2))
+  )
+}
+table_format = function(tab){
+  return(
+    tab %>%
+  kable(align = 'c') %>%
+  kable_styling(full_width = F)
+  )
+}
+table_pivot = function(tab, varname){
+  tab_ret = tab %>% 
+  rename(Variables = paste0(varname)) %>% 
+  pivot_wider(id_cols = 'Variables', names_from = 'portfolio', values_from = percentage) %>% 
+  relocate(any_of(c('Variables', 'Lower-risk', 'Typical', 'Higher-risk')))
+  return(tab_ret)
+}
+```
+
+## 2 Computation
+
+```{r table37, message=FALSE, warning=FALSE}
+credit_card_type =  subsegment_percent('credit_card_type')
+table_format(credit_card_type)
+
+current_credit_limit = subsegment_percent('current_credit_limit')
+table_format(current_credit_limit)
+
+days_past_due = subsegment_percent('days_past_due')
+days_past_due = data.table::as.data.table(days_past_due) %>% 
+  add_row(days_past_due = "30+ Days past due",
+          portfolio = 'Lower-risk',
+          percentage = round(0*100, 2)) %>% ## Adding a row for a 0 percent sub-group
+  arrange(days_past_due, portfolio)
+table_format(days_past_due)
+
+product_type = subsegment_percent('product_type')
+table_format(product_type)
+
+month_end_account_status= subsegment_percent('month_end_account_status')
+month_end_account_status= data.table::as.data.table(month_end_account_status) %>% 
+  add_row(month_end_account_status= "Other",
+          portfolio = 'Lower-risk',
+          percentage = round(0*100, 2)) %>% 
+  add_row(month_end_account_status= "Other",
+          portfolio = 'Typical',
+          percentage = round(0*100, 2)) %>%  ## Adding rows for subsegments with zeroes
+  arrange(month_end_account_status, portfolio)
+table_format(month_end_account_status)
+
+account_origination_year = subsegment_percent('account_origination_year')
+table_format(account_origination_year)
+
+month_end_close_status = subsegment_percent('month_end_close_status')
+month_end_close_status = data.table::as.data.table(month_end_close_status) %>% 
+  add_row(month_end_close_status = "Closed",
+          portfolio = 'Lower-risk',
+          percentage = round(0*100, 2)) %>% 
+  add_row(month_end_close_status = "Closed",
+          portfolio = 'Typical',
+          percentage = round(0*100, 2)) %>%  ## Adding rows for subsegments with zeroes
+  arrange(month_end_close_status, portfolio)
+table_format(month_end_close_status)
+
+cycle_ending_balance  = subsegment_percent('cycle_ending_balance' )
+table_format(cycle_ending_balance)
+
+income_at_origination = subsegment_percent('income_at_origination')
+table_format(income_at_origination)
+
+original_credit_limit = subsegment_percent('original_credit_limit')
+table_format(original_credit_limit)
+
+interest_rate_at_cycle_end = subsegment_percent('interest_rate_at_cycle_end')
+table_format(interest_rate_at_cycle_end)
+```
+
+## 3 Final Results
+
+The following is the final results. For reference, the code for this is saved in the following [repository](https://www.federalreserve.gov/publications/files/2023-june-supervisory-stress-test-methodology.pdf).
+
+```{r overall}
+## Listing the number of subsegments of interest
+subseg_list = c('credit_card_type', 'current_credit_limit', 'days_past_due', 'product_type', 'month_end_account_status', 'account_origination_year', 'month_end_close_status', 'cycle_ending_balance' , 'income_at_origination', 'original_credit_limit', 'interest_rate_at_cycle_end')
+## Creating main table to prep for concatenation of results
+data_concat = data.table::data.table(`Variables` = as.character(NA), `Lower-risk` = as.numeric(NA), `Typical` = as.numeric(NA), `Higher-risk` = as.numeric(NA))
+## Cycling through list of subsegments of interest and concatenating it to main table
+for(i in subseg_list){
+  data_temp = data.table::data.table(`Variables` = i, 
+                                     `Lower-risk` = as.numeric(NA), 
+                                     `Typical` = as.numeric(NA), 
+                                     `Higher-risk` = as.numeric(NA))
+  data_actual = data.table::as.data.table(table_pivot(tab = mget(paste0(i))[[1]], 
+                                                                       varname = paste0(i)))
+  
+  data_temp = data.table::funion(data_temp, data_actual)
+  data_concat = data.table::funion(data_concat, data_temp)
+}
+data_concat = data_concat %>% filter(!is.na(Variables))
+data_concat[is.na(data_concat)] <- " "
+
+table_format(data_concat)
+
+```
