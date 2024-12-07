@@ -192,7 +192,7 @@ table_format(interest_rate_at_cycle_end)
 
 ## 3 Final Results
 
-The following is the final results. For reference, the code for this is saved in the following [github repository](https://github.com/chye17/frb_technical).
+The following is the final result. For reference, the code for this is saved in the following [github repository](https://github.com/chye17/frb_technical).
 
 ```{r overall}
 ## Listing the number of subsegments of interest
