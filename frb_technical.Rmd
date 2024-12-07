@@ -1,5 +1,6 @@
 ---
 title: "FRB Technical Assessment"
+author: 'Chia Chye Yee'
 subtitle: "Reproduction of Table 37"
 date: "`r Sys.Date()`"
 output: 
